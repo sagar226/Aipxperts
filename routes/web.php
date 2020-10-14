@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::get('/', function () {
-    return view('employee');
-});
+
+Route::get('/',"EmployeeController@getEmployees");
+
+Route::get('search',"EmployeeController@getSearchResult");
+
+Route::post('create-emp',"EmployeeController@createEmployee");

@@ -8,25 +8,29 @@
         <h1 style="text-align: center;">Employee List</h1>
        
         <p id="re-error" style="text-align: center; color: red;"> </p>
+        <form method="GET" action="/search">
         <div class="row" style="margin-bottom: 40px">
             <div class="col-xs-2 col-xs-offset-1">
-            <select name="filter" id="filter"required>
+            <select name="filter" id="filter" required>
                 <option value="">select filter</option>
-                <option value="employee">Employee</option>
-                <option value="salary">salary</option>
-                <option value="designation">Designation</option>
+                @php  $arr=['employee','salary','designation']; @endphp
+                @foreach ($arr as $item)
+                <option value="{{ $item }}" {{ isset($filter) ? (($item == $filter) ? "selected" : ""  ) :"" }}>{{ ucfirst($item) }}</option>
+                @endforeach
+                
+                
               </select>    
             </div>
             <div class="col-xs-6">
-                <div class="input-group">
-                    <input type="hidden" name="search_param" value="all" id="search_param">         
-                    <input type="text" class="form-control search-panel"  name="x" value="" placeholder="Search term...">
+                <div class="input-group">      
+                    <input type="text" class="form-control search-panel"  name="query" value="{{ isset($query) ? $query : "" }}" placeholder="Search term...">
                     <span class="input-group-btn">
-                        <button class="btn btn-default" type="button" id='search'><span class="glyphicon glyphicon-search"></span></button>
+                        <button class="btn btn-default" type="submit" id='search'><span class="glyphicon glyphicon-search"></span></button>
                     </span>
                 </div>
             </div>
-            <button type="button" id="reset"class="btn btn-success">reset</button>
+        </form>
+            <form method="get" action="/"><button type="submit" id="reset"class="btn btn-success">reset</button></form>
         </div>
         <div class="col-md-14 ">
 
@@ -51,15 +55,14 @@
                             <th>Salary</th>
                         </tr> 
                     </thead>
-                    <tbody id='tables'>
-                    </tbody>
+                    <tbody class='emp'>
+                        @include('includes.emplist')
+                    <tbody>
                 </table>
             
               </div>
               <div class="panel-footer">
-                <div class="row" id='paginate'>
-                
-                </div>
+                <div class="row" id='demo'>
               </div>
             </div>
 
@@ -69,100 +72,42 @@
 @endsection
 @section('script')
 <script>
-    $.ajaxSetup({
-        headers: {
-            'X-CSRF-TOKEN': '{{{Session::token()}}}'
+    $(window).on('hashchange', function() {
+        if (window.location.hash) {
+            var page = window.location.hash.replace('#', '');
+            if (page == Number.NaN || page <= 0) {
+                return false;
+            } else {
+                getEmps(page);
+                
+            }
         }
     });
     $(document).ready(function() {
-      getEmpData(1);
-    });
-    
-    function getEmpData(page){
-      $.ajax({
-            url: 'api/employees?page='+page,
-            type: 'get',
-            dataType: 'json',
-            success:function(response){
-                employees=response.data.data;
-                data=null;
-                pagination=null;
-                $("#paginate").empty();
-                $("#tables").empty();
-                if(employees.length){
-                    for(ii=0;ii < employees.length;ii++){
-                        data+="<tr><td class='hidden-xs'>"+ employees[ii]['id']  +"</td><td>"+ employees[ii]['name']+"</td><td>"+ employees[ii]['designation'].name+"</td><td>"+ employees[ii]['salary'].salary+"</td></tr>";    
-                    }
-                    pageNextUrl='';
-                    if(response.data.next_page_url!=null){
-                        pageNextUrl="<li><button class='btn btn-default' onclick='getEmpData("+response.data.next_page_url.substr(-1)+")'>»</button></li>";
-                    }
-                    pagePrevUrl='';
-                    if(response.data.prev_page_url!=null){
-                        pagePrevUrl="<li><button class='btn btn-default' onclick='getEmpData("+response.data.prev_page_url.substr(-1)+")'>«</button></li>";
-                    }
-                    pagination="<div class='col col-xs-4'>Page "+response.data.current_page+" of "+response.data.last_page+"</div>"+
-                  "<div class='col col-xs-8'><ul class='pagination hidden-xs pull-right'>"+pagePrevUrl+pageNextUrl+"</ul></div>";
-                }else{
-                    data="<tr><td colspan='6' style='text-align:center;'>no value found</td></tr>";
-                }
-               
-                $("#tables").append(data);
-                $("#paginate").append(pagination);
-            }
-        });
-    }
-    function pageUrl(url){
-      console.log(url);
-    }
+        $(document).on('click', '.pagination a', function (e) {
+            $('.pagination li.active').removeClass('active')
+            $(this).parent().toggleClass('active');
 
-    $(document).ready(function(e){
-        $("#re-error").text("");
-        $('#search').click(function(e) {
+            data=$(this).attr('href').split('page=')[1];
+           
+            getEmps(data);
             e.preventDefault();
-            var query = $('.search-panel').val().toLowerCase();
-            var filter = $('#filter').val();
-            if(filter == ''){
-                $("#re-error").text("select filter first");
-            }else{
-                $.ajax({
-                    url: 'api/search/'+filter+'?query='+query,
-                    type: 'get',
-                    dataType: 'json',
-                    success:function(response){
-                        employees=response.data.data;
-                        data=null;
-                        pagination=null;
-                        $("#paginate").empty();
-                        $("#tables").empty();
-                        if(employees.length){
-                            for(ii=0;ii < employees.length;ii++){
-                                data+="<tr><td class='hidden-xs'>"+ employees[ii]['id']  +"</td><td>"+ employees[ii]['name']+"</td><td>"+ employees[ii]['designation'].name+"</td><td>"+ employees[ii]['salary'].salary+"</td></tr>";    
-                            }
-                            pageNextUrl='';
-                            if(response.data.next_page_url!=null){
-                                pageNextUrl="<li><button class='btn btn-default' onclick='getEmpData("+response.data.next_page_url.substr(-1)+")'>»</button></li>";
-                            }
-                            pagePrevUrl='';
-                            if(response.data.prev_page_url!=null){
-                                pagePrevUrl="<li><button class='btn btn-default' onclick='getEmpData("+response.data.prev_page_url.substr(-1)+")'>«</button></li>";
-                            }
-                            pagination="<div class='col col-xs-4'>Page "+response.data.current_page+" of "+response.data.last_page+"</div>"+
-                        "<div class='col col-xs-8'><ul class='pagination hidden-xs pull-right'>"+pagePrevUrl+pageNextUrl+"</ul></div>";
-                        }else{
-                            data="<tr><td colspan='6' style='text-align:center;'>no value found</td></tr>";
-                        }
-                    
-                        $("#tables").append(data);
-                        $("#paginate").append(pagination);
-                    }
-                });
-            }
         });
-        $('#reset').click(function(e) {
-            e.preventDefault();
-            getEmpData(1);
-        }); 
     });
-</script>
+    function getEmps(page) {
+        $.ajax({
+
+            url : '?page=' + page,
+            dataType: 'json',
+        }).done(function (data) {
+
+            $('.emp').html(data);
+            location.hash = page;
+
+        }).fail(function () {
+
+            alert('Employee list not loaded');
+        });
+    }
+ </script>   
 @endsection

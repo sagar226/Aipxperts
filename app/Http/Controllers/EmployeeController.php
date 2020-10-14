@@ -8,10 +8,13 @@ use App\Salary;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Response;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\View;
 
 class EmployeeController extends Controller
 {
+    
        /**
      * create employee for application
      *
@@ -40,7 +43,7 @@ class EmployeeController extends Controller
                 'employee_id' => $employee->id
             ]);
             DB::commit();
-            return $this->successResponse("Employee create successfully ");
+            return $this->successResponse("Employee create successfully");
         }catch(Exception $e){
             return $this->errorResponse($e->getMessage());
         }
@@ -52,11 +55,14 @@ class EmployeeController extends Controller
      *
      * @var integer
      */
-    public function getEmployees($item=2){
+    public function getEmployees($item=2,Request $request){
         
         $employees=Employee::with('designation','salary')->paginate($item);
-        
-        return $this->successResponse($employees);
+        if ($request->ajax()) {
+            return Response::json(View::make('includes.emplist', array('employees' => $employees))->render());
+        }
+
+        return View::make('employee', array('employees' => $employees));
     }
 
     /**
@@ -65,27 +71,34 @@ class EmployeeController extends Controller
      * @var integer
      */
     public function getSearchResult(Request $request,$filter,$item=2){
-        
+        $filter=$request['filter'];
         $validator = Validator::make(['filter' => $filter],[
             'filter'=>'required|in:salary,employee,designation'
         ]);       
 
         if($validator->fails()) return $this->validationError($validator);
-        $searchString=$request['query'];
-        if(in_array($filter,['salary','designation'])){
-
-            $employees = Employee::with('designation','salary')->whereHas($filter, function ($query) use ($searchString,$filter){
-                
-                if($filter=='salary')  $query->where('salary', 'like', '%'.$searchString.'%');
-                
-                else  $query->where('name', 'like', '%'.$searchString.'%');
-
-            })->paginate($item);
-        }else{
-            $employees = Employee::with('designation','salary')->where('name', 'like', '%'.$searchString.'%')->paginate($item); 
-        }
        
-        return $this->successResponse($employees);
+        $searchString=$request['query'];
+    
+        if($filter=='salary'){
+
+            $employees = Employee::with('designation','salary')->whereHas($filter, function ($query) use ($searchString){
+                  $query->where('salaries.salary', 'like', $searchString.'%');
+            })->paginate($item);
+            
+        }else if($filter=='designation') {
+
+            $employees = Employee::with('designation','salary')->whereHas($filter, function ($query) use ($searchString){
+                  $query->where('designations.name', 'like', $searchString.'%');
+            })->paginate($item);
+
+        }else{
+            $employees = Employee::with('designation','salary')->where('name', 'like',$searchString.'%')->paginate($item); 
+        }
+        if ($request->ajax()) {
+            return Response::json(View::make('includes.emplist', array('employees' => $employees,'query'=> $searchString,'filter' => $filter))->render());
+        }
+        return View::make('employee', array('employees' => $employees,'query'=> $searchString,'filter' => $filter));
 
     }
 }

@@ -17,8 +17,4 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth:api')->get('/user', function (Request $request) {
     return $request->user();
 });
-Route::get('employees',"EmployeeController@getEmployees");
 
-Route::get('search/{filter}',"EmployeeController@getSearchResult");
-
-Route::post('create-emp',"EmployeeController@createEmployee");
